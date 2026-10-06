@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    match /users/{uid} {
+      allow read, delete: if owner(uid);
+      allow create, update: if owner(uid)
+        && request.resource.data.keys().hasOnly(['nickname', 'gradeBand', 'answers', 'enabledHelpers', 'checkedInAt'])
+        && request.resource.data.nickname is string
+        && request.resource.data.nickname.size() > 0 && request.resource.data.nickname.size() <= 30
+        && request.resource.data.gradeBand in ['K-2', '3-5', '6-8']
+        && request.resource.data.answers.keys().hasAll(['remember', 'steps', 'prioritize', 'focus', 'ahead'])
+        && request.resource.data.answers.keys().hasOnly(['remember', 'steps', 'prioritize', 'focus', 'ahead'])
+        && request.resource.data.answers.remember in [0, 1, 2]
+        && request.resource.data.answers.steps in [0, 1, 2]
+        && request.resource.data.answers.prioritize in [0, 1, 2]
+        && request.resource.data.answers.focus in [0, 1, 2]
+        && request.resource.data.answers.ahead in [0, 1, 2]
+        && request.resource.data.enabledHelpers is list
+        && request.resource.data.enabledHelpers.size() <= 5
+        && request.resource.data.enabledHelpers.hasOnly(['remember', 'steps', 'prioritize', 'focus', 'ahead'])
+        && request.resource.data.checkedInAt is string;
+      match /assignments/{assignmentId} {
+        allow read, delete: if owner(uid);
+        allow create, update: if owner(uid)
+          && request.resource.data.keys().hasOnly(['id', 'title', 'subject', 'dueDate', 'steps', 'completed', 'plannedFor', 'createdAt'])
+          && request.resource.data.id == assignmentId
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 120
+          && request.resource.data.subject is string && request.resource.data.subject.size() <= 40
+          && request.resource.data.dueDate is string && request.resource.data.dueDate.size() <= 10
+          && request.resource.data.steps is list && request.resource.data.steps.size() <= 20
+          && request.resource.data.completed is bool
+          && request.resource.data.plannedFor is string && request.resource.data.plannedFor.size() <= 10
+          && request.resource.data.createdAt is string;
+      }
+      match /reflections/{date} {
+        allow read, delete: if owner(uid);
+        allow create, update: if owner(uid)
+          && request.resource.data.keys().hasOnly(['feeling', 'note'])
+          && request.resource.data.feeling in ['Good', 'Okay', 'Tricky']
+          && request.resource.data.note is string && request.resource.data.note.size() <= 300;
+      }
+    }
+  }
+}
